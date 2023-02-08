@@ -249,11 +249,11 @@ def getCourseWork(gclassid):
 @app.route('/roster/<gclassid>')
 def roster(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
+
     rosterDF = pd.DataFrame(gClass.rosterdict)
     profileDF = pd.json_normalize(rosterDF['profile'])
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
     rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.fullName'], axis=1)
-
     rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
 
     rosterDFHTML = rosterDF.to_html(escape=False)
@@ -265,6 +265,7 @@ def roster(gclassid):
 def coursework(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     courseWorkDF = pd.DataFrame(gClass.courseworkdict)
+    courseWorkDF=courseWorkDF.drop(['courseId'], axis=1)
     courseWorkDFHTML = courseWorkDF.to_html(escape=False)
     courseWorkDFHTML = courseWorkDFHTML.replace('<th>', '<th class="text-start">')
     courseWorkDFHTML = Markup(courseWorkDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
@@ -278,3 +279,60 @@ def studsubs(gclassid):
     studSubsDFHTML = studSubsDFHTML.replace('<th>', '<th class="text-start">')
     studSubsDFHTML = Markup(studSubsDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     return render_template('studsubs.html',gClass=gClass, studSubsDFHTML=studSubsDFHTML)
+
+@app.route('/gradebook/<gclassid>')
+def gradebook(gclassid):
+    gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
+    if not gClass.rosterdict or not gClass.courseworkdict or not gClass.studentsubmissionsdict:
+        flash(f"{gClass.coursedict.name} is missing at least one of roster, assignments or student submissions.")
+        return redirect(url_for('gclass', gclassid=gclassid))
+    
+    studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
+    studSubsDF=studSubsDF.drop(['submissionHistory','assignmentSubmission','alternateLink'], axis=1)
+
+    courseWorkDF = pd.DataFrame(gClass.courseworkdict)
+    courseWorkDF = courseWorkDF[['id','title','state','maxPoints','topic']].copy()
+
+    rosterDF = pd.DataFrame(gClass.rosterdict)
+    profileDF = pd.json_normalize(rosterDF['profile'])
+    rosterDF = pd.concat([rosterDF,profileDF],axis=1)
+    rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.fullName'], axis=1)
+    rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
+    gbDF = pd.merge(
+        courseWorkDF,
+        studSubsDF,
+        how="inner",
+        on=None,
+        left_on='id',
+        right_on='courseWorkId',
+        left_index=False,
+        right_index=False,
+        sort=True,
+        suffixes=("_CW", "_Sub"),
+        copy=True,
+        indicator=False,
+        validate=None,
+    )
+
+    gbDF = pd.merge(
+        rosterDF,
+        gbDF,
+        how="inner",
+        on='userId',
+        left_on=None,
+        right_on=None,
+        left_index=False,
+        right_index=False,
+        sort=True,
+        suffixes=("_ass", "_sub"),
+        copy=True,
+        indicator=False,
+        validate=None,
+    )
+
+    gbDF.to_csv('gb/gradebook.csv')
+
+    gbDFHTML = gbDF.to_html(escape=False)
+    gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
+    gbDFHTML = Markup(gbDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
+    return render_template('gradebook.html',gClass=gClass, gbDFHTML=gbDFHTML)
