@@ -54,7 +54,6 @@ class Comment(Document):
     blog = ReferenceField('Blog',reverse_delete_rule=CASCADE)
     # This could be used to allow comments on comments
     comment = ReferenceField('Comment',reverse_delete_rule=CASCADE)
-    # Line 68 is where you store all the info you need but won't find in the Course and Teacher Object
     content = StringField()
     create_date = DateTimeField(default=dt.datetime.utcnow)
     modify_date = DateTimeField()
