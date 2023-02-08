@@ -73,7 +73,20 @@ def gclassesget():
 @app.route('/gclass/<gclassid>')
 def gclass(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
-    return render_template('gcourse.html', gClass=gClass)
+    gcourseDF = pd.DataFrame(data=gClass.gcoursedict)
+    gcourseDF = gcourseDF.T
+    #profileDF = pd.json_normalize(rosterDF['profile'])
+    #rosterDF = pd.concat([rosterDF,profileDF],axis=1)
+    gcourseDF=gcourseDF.drop(['title','alternateLink','calculationType','displaySetting'], axis=1)
+    try:
+        gcourseDF=gcourseDF.drop(['gradeCategories'], axis=1)
+    except:
+        pass
+    gcourseDF = gcourseDF.rename(columns={"id": "Values"})
+    rgcourseDFHTML = gcourseDF.to_html(escape=False)
+    rosterDFHTML = Markup(rgcourseDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
+    
+    return render_template('gcourse.html', gClass=gClass, rosterDFHTML=rosterDFHTML)
 
 
 @app.route("/roster/get/<gclassid>")
@@ -239,11 +252,12 @@ def roster(gclassid):
     rosterDF = pd.DataFrame(gClass.rosterdict)
     profileDF = pd.json_normalize(rosterDF['profile'])
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
-    rosterDF=rosterDF.drop(['profile', 'id','permissions','name.fullName'], axis=1)
+    rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.fullName'], axis=1)
 
     rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
 
     rosterDFHTML = rosterDF.to_html(escape=False)
+    rosterDFHTML = rosterDFHTML.replace('<th>', '<th class="text-start">')
     rosterDFHTML = Markup(rosterDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     return render_template('roster.html',gClass=gClass, rosterDFHTML=rosterDFHTML)
 
@@ -252,6 +266,7 @@ def coursework(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     courseWorkDF = pd.DataFrame(gClass.courseworkdict)
     courseWorkDFHTML = courseWorkDF.to_html(escape=False)
+    courseWorkDFHTML = courseWorkDFHTML.replace('<th>', '<th class="text-start">')
     courseWorkDFHTML = Markup(courseWorkDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     return render_template('coursework.html',gClass=gClass,courseWorkDFHTML=courseWorkDFHTML)
 
@@ -259,5 +274,7 @@ def coursework(gclassid):
 def studsubs(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
-    studSubsDFHTML = Markup(studSubsDF.to_html(escape=False))
+    studSubsDFHTML = studSubsDF.to_html(escape=False)
+    studSubsDFHTML = studSubsDFHTML.replace('<th>', '<th class="text-start">')
+    studSubsDFHTML = Markup(studSubsDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     return render_template('studsubs.html',gClass=gClass, studSubsDFHTML=studSubsDFHTML)
