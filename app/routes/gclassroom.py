@@ -16,6 +16,13 @@ from bson.objectid import ObjectId
 from .login import credentials_to_dict, client
 import json
 
+# This files gets large dictionaries from google and stores them in a record in the GoogleClassroom
+# data collection.  Then, to diplay those dictionaries the routes convert them in to Pandas
+# DataFrames. 
+
+# TODO get a mockup of the question you want to ask this data and see how we can display
+# the answer
+
 @app.route('/gclasses/list')
 def gclasseslist():
     
@@ -230,7 +237,6 @@ def getCourseWork(gclassid):
 def roster(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     rosterDF = pd.DataFrame(gClass.rosterdict)
-
     profileDF = pd.json_normalize(rosterDF['profile'])
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
     rosterDF=rosterDF.drop(['profile', 'id','permissions','name.fullName'], axis=1)
