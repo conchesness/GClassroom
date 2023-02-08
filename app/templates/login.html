@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block body %}
+    <div class="container">
+        <h1>Login</h1>
+        {% for field in form.errors %}
+            {% for error in form.errors[field] %}
+                <div class="alert alert-error">
+                    <strong>Error!</strong>{{field}}: {{error}}
+                </div>
+            {% endfor %}
+        {% endfor %}
+        <p>New User? <a href="{{ url_for('register') }}">Click to Register!</a></p>
+
+        <form method=post>
+            {{ form.hidden_tag() }}
+            <table class="table">
+            <tr><th>Username</th><th>{{form.username}}</th></tr>
+            <tr><th>password</th><th>{{form.password}}</th></tr>
+            <tr><th>Remember Me?</th><th>{{form.remember_me}}</th></tr>
+            <tr><td colspan="2">{{form.submit()}}</td></tr>
+        </table>
+        </form>
+
+        <p>
+            Forgot Your Password?
+            <a href="{{ url_for('reset_password_request') }}">Click to Reset It</a>
+        </p>
+        
+    </div>
+{% endblock %}

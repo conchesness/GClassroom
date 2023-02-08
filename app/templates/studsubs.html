@@ -1,0 +1,17 @@
+<!-- This is a blank template.  You can copy this to make a new template page. -->
+
+{% extends 'base.html' %}
+{% block body %}
+<h1>Student Submissions for {{gClass.gcoursedict.name}}</h1>
+{{studSubsDFHTML}}
+{#
+    <h4>1st 100 only</h4>
+    <ol>
+    {% for submission in gClass.studentsubmissionsdict %}
+        {% if loop.index <= 100 %}
+            <li>{{submission}}</li>
+        {% endif %}
+    {% endfor %}
+    </ol>
+#}
+{% endblock %}

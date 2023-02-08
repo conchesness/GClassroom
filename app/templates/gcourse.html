@@ -1,0 +1,17 @@
+<!-- This is a blank template.  You can copy this to make a new template page. -->
+
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>{{gClass.gcoursedict.name}}</h1>
+<h3>Course info</h3>
+{{gClass.gcoursedict}}
+<h3> Roster | <a href="/roster/{{gClass.gcourseid}}">List</a> | <a href="/roster/get/{{gClass.gcourseid}}">Get</a></h3>
+{{gClass.rosterdict | length}}
+<h3>Assignments | <a href="/coursework/{{gClass.gcourseid}}">List</a> | <a href="/coursework/get/{{gClass.gcourseid}}">Get</a></h3>
+{{gClass.courseworkdict | length}}
+<h3>Student work | <a href="/studsubs/{{gClass.gcourseid}}"> List </a>| <a href="/studentwork/get/{{gClass.gcourseid}}">Get</a></h3>
+{{gClass.studentsubmissionsdict|length}}
+
+
+{% endblock %}

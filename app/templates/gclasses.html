@@ -1,0 +1,12 @@
+<!-- This is a blank template.  You can copy this to make a new template page. -->
+
+{% extends 'base.html' %}
+
+{% block body %}
+<a href="/gclasses/get">Update</a>
+<ul>
+{% for gCourse in gCourses %}
+    <li><a href="/gclass/{{gCourse.gcourseid}}"><b>{{gCourse.gcoursedict.name}}</b></a></li>
+{% endfor %}
+</ul>
+{% endblock %}
