@@ -280,8 +280,9 @@ def studsubs(gclassid):
     studSubsDFHTML = Markup(studSubsDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     return render_template('studsubs.html',gClass=gClass, studSubsDFHTML=studSubsDFHTML)
 
+@app.route('/gradebook/<gclassid>/<dl>')
 @app.route('/gradebook/<gclassid>')
-def gradebook(gclassid):
+def gradebook(gclassid,dl=0):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     if not gClass.rosterdict or not gClass.courseworkdict or not gClass.studentsubmissionsdict:
         flash(f"{gClass.coursedict.name} is missing at least one of roster, assignments or student submissions.")
@@ -330,7 +331,9 @@ def gradebook(gclassid):
         validate=None,
     )
 
-    gbDF.to_csv('gb/gradebook.csv')
+    if dl == "1":
+        gbDF.to_csv('gb/gradebook.csv')
+        flash("File downloaded to gb folder.")
 
     gbDFHTML = gbDF.to_html(escape=False)
     gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
