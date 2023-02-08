@@ -1,4 +1,4 @@
-o # This is where all the database collections are defined. A collection is a place to hold a defined 
+# This is where all the database collections are defined. A collection is a place to hold a defined 
 # set of data like Users, Blogs, Comments. Collections are defined below as classes. Each class name is 
 # the name of the data collection and each item is a data 'field' that stores a piece of data.  Data 
 # fields have types like IntField, StringField etc.  This uses the Mongoengine Python Library. When 
