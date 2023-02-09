@@ -83,10 +83,10 @@ def gclass(gclassid):
     except:
         pass
     gcourseDF = gcourseDF.rename(columns={"id": "Values"})
-    rgcourseDFHTML = gcourseDF.to_html(escape=False)
-    rosterDFHTML = Markup(rgcourseDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
+    gcourseDFHTML = gcourseDF.to_html(escape=False)
+    gcourseDFHTML = Markup(gcourseDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
     
-    return render_template('gcourse.html', gClass=gClass, rosterDFHTML=rosterDFHTML)
+    return render_template('gcourse.html', gClass=gClass, gcourseDFHTML=gcourseDFHTML)
 
 
 @app.route("/roster/get/<gclassid>")
@@ -289,9 +289,12 @@ def gradebook(gclassid,dl=0):
         return redirect(url_for('gclass', gclassid=gclassid))
     
     studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
-    studSubsDF=studSubsDF.drop(['submissionHistory','assignmentSubmission','alternateLink'], axis=1)
+    # The following line can be used to drop specific columns from the result
+    #studSubsDF=studSubsDF.drop(['submissionHistory','assignmentSubmission','alternateLink'], axis=1)
 
     courseWorkDF = pd.DataFrame(gClass.courseworkdict)
+    # The following line is the opposite of dropping, it is a way to select
+    # only the columns you want. Comment it out to see all of the data.
     courseWorkDF = courseWorkDF[['id','title','state','maxPoints','topic']].copy()
 
     rosterDF = pd.DataFrame(gClass.rosterdict)
@@ -299,6 +302,7 @@ def gradebook(gclassid,dl=0):
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
     rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.fullName'], axis=1)
     rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
+
     gbDF = pd.merge(
         courseWorkDF,
         studSubsDF,
@@ -334,6 +338,70 @@ def gradebook(gclassid,dl=0):
     if dl == "1":
         gbDF.to_csv('gb/gradebook.csv')
         flash("File downloaded to gb folder.")
+
+    gbDFHTML = gbDF.to_html(escape=False)
+    gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
+    gbDFHTML = Markup(gbDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
+    return render_template('gradebook.html',gClass=gClass, gbDFHTML=gbDFHTML)
+
+@app.route('/gbvis/<gclassid>')
+def gbvis(gclassid):
+    gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
+    if not gClass.rosterdict or not gClass.courseworkdict or not gClass.studentsubmissionsdict:
+        flash(f"{gClass.coursedict.name} is missing at least one of roster, assignments or student submissions.")
+        return redirect(url_for('gclass', gclassid=gclassid))
+    
+    studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
+    # The following line can be used to drop specific columns from the result
+    studSubsDF=studSubsDF.drop(['submissionHistory','assignmentSubmission','alternateLink'], axis=1)
+
+    courseWorkDF = pd.DataFrame(gClass.courseworkdict)
+    # The following line is the opposite of dropping, it is a way to select
+    # only the columns you want. Comment it out to see all of the data.
+    courseWorkDF = courseWorkDF[['id','title','state','maxPoints','topic']].copy()
+
+    rosterDF = pd.DataFrame(gClass.rosterdict)
+    profileDF = pd.json_normalize(rosterDF['profile'])
+    rosterDF = pd.concat([rosterDF,profileDF],axis=1)
+    rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.givenName','name.familyName'], axis=1)
+    rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
+
+    gbDF = pd.merge(
+        courseWorkDF,
+        studSubsDF,
+        how="inner",
+        on=None,
+        left_on='id',
+        right_on='courseWorkId',
+        left_index=False,
+        right_index=False,
+        sort=True,
+        suffixes=("_ass", "_sub"),
+        copy=True,
+        indicator=False,
+        validate=None,
+    )
+
+    gbDF = pd.merge(
+        rosterDF,
+        gbDF,
+        how="inner",
+        on='userId',
+        left_on=None,
+        right_on=None,
+        left_index=False,
+        right_index=False,
+        sort=True,
+        suffixes=("_stu", "_gb"),
+        copy=True,
+        indicator=False,
+        validate=None,
+    )
+
+    gbDF = gbDF.pivot_table(index="name.fullName", columns="title", values="assignedGrade", margins_name="Ave")
+    gbDF['Total'] = gbDF.sum(axis=1)
+    gbDF['Ave'] = gbDF.iloc[:-1].mean(axis=1)
+    gbDF['Count'] = gbDF.iloc[:-2].count(axis=1)
 
     gbDFHTML = gbDF.to_html(escape=False)
     gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
