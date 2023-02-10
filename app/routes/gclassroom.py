@@ -426,7 +426,13 @@ def gbvis(gclassid):
 
     gbDF.sort_values(by=['name.fullName'],inplace=True)
 
-    gbDFHTML = gbDF.to_html(escape=False)
+    gbDFHTML = gbDF.style\
+        .format(precision=2)\
+        .format(subset=['Count'], precision=0)\
+        .set_properties(subset=['Ave','Count'], **{'font-weight': 'bold'})\
+        .set_properties(**{'border': '1px black solid !important'})\
+        .to_html() 
+
     gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
-    gbDFHTML = Markup(gbDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
+    gbDFHTML = Markup(gbDFHTML.replace('<table id', '<table class="table" id'))
     return render_template('gradebook.html',gClass=gClass, gbDFHTML=gbDFHTML)
