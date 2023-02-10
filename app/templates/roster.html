@@ -4,5 +4,6 @@
 
 {% block body %}
 <h1>Roster for {{gClass.gcoursedict.name}}</h1>
+sort: <a href="/roster/{{gClass.gcourseid}}/fname">fname</a>  | <a href="/roster/{{gClass.gcourseid}}/lname">lname</a>
 {{rosterDFHTML}}
 {% endblock %}

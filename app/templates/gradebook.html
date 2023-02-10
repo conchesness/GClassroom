@@ -4,8 +4,10 @@
 
 {% block body %}
 
-<a href="/gradebook/{{gClass.gcourseid}}/1">Download CSV</a>
-
-{{gbDFHTML}}
+{% if not 'gbvis' in request.url %}
+    <a href="/gradebook/{{gClass.gcourseid}}/1">Download CSV</a>
+{% else %}
+    {{gbDFHTML}}
+{% endif %}
 
 {% endblock %}

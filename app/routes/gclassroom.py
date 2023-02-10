@@ -246,8 +246,9 @@ def getCourseWork(gclassid):
     gclassroom.update(courseworkdict = assignmentsAll)
     return redirect(url_for("gclass",gclassid=gclassid))
 
+@app.route('/roster/<gclassid>/<sort>')
 @app.route('/roster/<gclassid>')
-def roster(gclassid):
+def roster(gclassid, sort='lname'):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
 
     rosterDF = pd.DataFrame(gClass.rosterdict)
@@ -255,7 +256,11 @@ def roster(gclassid):
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
     rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.fullName'], axis=1)
     rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
-
+    if sort == 'lname':
+        rosterDF.sort_values(by=['name.familyName','name.givenName'],inplace=True)
+    else:
+        rosterDF.sort_values(by=['name.givenName','name.familyName'],inplace=True)
+    rosterDF = rosterDF.set_index('userId')
     rosterDFHTML = rosterDF.to_html(escape=False)
     rosterDFHTML = rosterDFHTML.replace('<th>', '<th class="text-start">')
     rosterDFHTML = Markup(rosterDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
@@ -265,7 +270,17 @@ def roster(gclassid):
 def coursework(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     courseWorkDF = pd.DataFrame(gClass.courseworkdict)
-    courseWorkDF=courseWorkDF.drop(['courseId'], axis=1)
+    dueDateDF = pd.json_normalize(courseWorkDF['dueDate'])
+    courseWorkDF = pd.concat([courseWorkDF,dueDateDF],axis=1)  
+    courseWorkDF['year'] = courseWorkDF['year'].fillna(0).astype(str).str.replace(".0","",regex=False)
+    courseWorkDF['month'] = courseWorkDF['month'].fillna(0).astype(str).str.replace(".0","",regex=False)
+    courseWorkDF['day'] = courseWorkDF['day'].fillna(0).astype(str).str.replace(".0","",regex=False)
+    courseWorkDF.loc[courseWorkDF['year'] != '0', 'dueDate'] = courseWorkDF['day']+'/'+courseWorkDF['month']+'/'+courseWorkDF['year']
+    courseWorkDF=courseWorkDF.drop(['courseId','year','month','day'], axis=1)
+    courseWorkDF['dueDate'] = pd.to_datetime(courseWorkDF['dueDate'])   
+    courseWorkDF.sort_values(by=['dueDate'],inplace=True)
+    courseWorkDF = courseWorkDF.set_index('id')
+
     courseWorkDFHTML = courseWorkDF.to_html(escape=False)
     courseWorkDFHTML = courseWorkDFHTML.replace('<th>', '<th class="text-start">')
     courseWorkDFHTML = Markup(courseWorkDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
@@ -275,6 +290,7 @@ def coursework(gclassid):
 def studsubs(gclassid):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
+     
     studSubsDFHTML = studSubsDF.to_html(escape=False)
     studSubsDFHTML = studSubsDFHTML.replace('<th>', '<th class="text-start">')
     studSubsDFHTML = Markup(studSubsDFHTML.replace('<table border="1" class="dataframe">', '<table border="1" class="table">'))
@@ -399,9 +415,16 @@ def gbvis(gclassid):
     )
 
     gbDF = gbDF.pivot_table(index="name.fullName", columns="title", values="assignedGrade", margins_name="Ave")
-    gbDF['Total'] = gbDF.sum(axis=1)
-    gbDF['Ave'] = gbDF.iloc[:-1].mean(axis=1)
+    # = gbDF.sum(axis=1)
+    gbDF['Ave'] = gbDF.iloc[:-1].mean(axis=1).round(2)
     gbDF['Count'] = gbDF.iloc[:-2].count(axis=1)
+
+    ave = gbDF.pop("Ave")
+    gbDF.insert(0, "Ave", ave)
+    count = gbDF.pop("Count")
+    gbDF.insert(1, "Count", count)
+
+    gbDF.sort_values(by=['name.fullName'],inplace=True)
 
     gbDFHTML = gbDF.to_html(escape=False)
     gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
