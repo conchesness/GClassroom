@@ -361,27 +361,41 @@ def gradebook(gclassid,dl=0):
     return render_template('gradebook.html',gClass=gClass, gbDFHTML=gbDFHTML)
 
 @app.route('/gbvis/<gclassid>')
-def gbvis(gclassid):
+@app.route('/gbvis/<gclassid>/<sortValue>')
+def gbvis(gclassid, sortValue='lname'):
     gClass = GoogleClassroom.objects.get(gcourseid=gclassid)
     if not gClass.rosterdict or not gClass.courseworkdict or not gClass.studentsubmissionsdict:
         flash(f"{gClass.coursedict.name} is missing at least one of roster, assignments or student submissions.")
         return redirect(url_for('gclass', gclassid=gclassid))
     
+    #Take the dict out of the db and turn it into a dataframe
     studSubsDF = pd.DataFrame(gClass.studentsubmissionsdict)
     # The following line can be used to drop specific columns from the result
     studSubsDF=studSubsDF.drop(['submissionHistory','assignmentSubmission','alternateLink'], axis=1)
 
+    #Take the dict out of the db and turn it into a dataframe
     courseWorkDF = pd.DataFrame(gClass.courseworkdict)
     # The following line is the opposite of dropping, it is a way to select
     # only the columns you want. Comment it out to see all of the data.
     courseWorkDF = courseWorkDF[['id','title','state','maxPoints','topic']].copy()
 
+    #Take the dict out of the db and turn it into a dataframe
     rosterDF = pd.DataFrame(gClass.rosterdict)
+    #profile is a dict in a cell of dataframe, this explodes it as alomuns
     profileDF = pd.json_normalize(rosterDF['profile'])
+    #concatenate the two
     rosterDF = pd.concat([rosterDF,profileDF],axis=1)
+
+    #change name.fullName to be last name first if that is the sort order from the url
+    if sortValue == 'lname':
+        rosterDF['name.fullName'] = rosterDF['name.familyName']+", "+rosterDF['name.givenName']
+
+    #Drop unwanted fields
     rosterDF=rosterDF.drop(['profile', 'courseId', 'id','permissions','name.givenName','name.familyName'], axis=1)
+    #remove NaN from a column
     rosterDF['verifiedTeacher'] = rosterDF['verifiedTeacher'] .fillna("")
 
+    # merge two tables on a common ID
     gbDF = pd.merge(
         courseWorkDF,
         studSubsDF,
@@ -398,6 +412,7 @@ def gbvis(gclassid):
         validate=None,
     )
 
+    #merge two tables on a common id
     gbDF = pd.merge(
         rosterDF,
         gbDF,
@@ -413,26 +428,57 @@ def gbvis(gclassid):
         indicator=False,
         validate=None,
     )
+    
+    #create a pivot table to show scores for each student on each assignment
+    gbDF = gbDF.pivot_table(index="name.fullName", columns="title", values="assignedGrade", aggfunc=["mean"], margins=True, margins_name="Ave")
 
-    gbDF = gbDF.pivot_table(index="name.fullName", columns="title", values="assignedGrade", margins_name="Ave")
-    # = gbDF.sum(axis=1)
-    gbDF['Ave'] = gbDF.iloc[:-1].mean(axis=1).round(2)
-    gbDF['Count'] = gbDF.iloc[:-2].count(axis=1)
+    #get all the column names and pop the last one off which is an average of all scores.
+    #Then use that list to count all the the columns with a score except the ave column
+    col_list = list(gbDF)
+    col_list.pop()
+    gbDF[('','Count')] = gbDF[col_list].count(axis=1)
 
-    ave = gbDF.pop("Ave")
-    gbDF.insert(0, "Ave", ave)
-    count = gbDF.pop("Count")
-    gbDF.insert(1, "Count", count)
+    #Move the ave and Count columns to the front of the table
+    ave = gbDF.pop(("mean","Ave"))
+    gbDF.insert(0, ("","Ave"), ave)
+    count = gbDF.pop(("","Count"))
+    gbDF.insert(1, ("","Count"), count)
 
-    gbDF.sort_values(by=['name.fullName'],inplace=True)
+    #Drop the Ave row from the bottom of the Dataframe before the sorting
+    #when you select a column it is turned into a series so you need to turn it back 
+    # into a datafram and then transpose it so it can be put back onto the final dataframe after sorting
+    ave = pd.DataFrame(gbDF.loc['Ave']).transpose()
+    notAve = gbDF.drop(['Ave'])
 
+    print(gbDF.columns)
+    if sortValue == 'fname' or sortValue == "lname":
+        sorted = notAve.sort_values(by=['name.fullName'],ascending=True)
+    elif sortValue == "count":
+        sorted = notAve.sort_values(by=[('','Count'),'name.fullName'],ascending=True)
+    elif sortValue == "ave":
+        sorted = notAve.sort_values(by=[('','Ave')],ascending=True) 
+    gbDF = pd.concat([sorted,ave])
+    #Drop the label at the top of the DF that was created by the pivot table.
+    gbDF.columns = gbDF.columns.droplevel(0)
+
+ 
+    #Lots of styling for the html
     gbDFHTML = gbDF.style\
         .format(precision=2)\
-        .format(subset=['Count'], precision=0)\
+        .set_table_styles([
+            {'selector': 'tr:hover','props': 'background-color: yellow; font-size: 1em;'},\
+            {'selector': 'th','props': 'background-color: red'}], overwrite=False)\
         .set_properties(subset=['Ave','Count'], **{'font-weight': 'bold'})\
+        .format(subset=['Count'], precision=0)\
+        .set_sticky(axis="index")\
+        .set_sticky(axis="columns")\
         .set_properties(**{'border': '1px black solid !important'})\
         .to_html() 
-
-    gbDFHTML = gbDFHTML.replace('<th>', '<th class="text-start">')
+    # TODO these two lines should be accomplished with the styler like the lines
+    # above
+    gbDFHTML = gbDFHTML.replace('inherit','white')
+    gbDFHTML = gbDFHTML.replace('nan','---')
     gbDFHTML = Markup(gbDFHTML.replace('<table id', '<table class="table" id'))
+
+
     return render_template('gradebook.html',gClass=gClass, gbDFHTML=gbDFHTML)

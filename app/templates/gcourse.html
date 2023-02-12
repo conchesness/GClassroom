@@ -4,15 +4,15 @@
 
 {% block body %}
 <h1>{{gClass.gcoursedict.name}}</h1>
-<h3>Course info</h3>
-{{gcourseDFHTML}}
+
 <h3> Roster | <a href="/roster/{{gClass.gcourseid}}">List</a> | <a href="/roster/get/{{gClass.gcourseid}}">Get</a></h3>
 {{gClass.rosterdict | length}}
 <h3>Assignments | <a href="/coursework/{{gClass.gcourseid}}">List</a> | <a href="/coursework/get/{{gClass.gcourseid}}">Get</a></h3>
 {{gClass.courseworkdict | length}}
 <h3>Student work | <a href="/studsubs/{{gClass.gcourseid}}"> List </a>| <a href="/studentwork/get/{{gClass.gcourseid}}">Get</a></h3>
 {{gClass.studentsubmissionsdict|length}}
-<h3> <a href="/gbvis/{{gClass.gcourseid}}"> Gradebook</a></h3> <a href="/gradebook/{{gClass.gcourseid}}">Download data</a>
-
+<h3> Gradebook | <a href="/gbvis/{{gClass.gcourseid}}"> View</a> | <a href="/gradebook/{{gClass.gcourseid}}">Download</a></h3>
+<h3>Course info</h3>
+{{gcourseDFHTML}}
 
 {% endblock %}

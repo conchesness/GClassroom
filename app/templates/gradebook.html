@@ -7,6 +7,34 @@
 {% if not 'gbvis' in request.url %}
     <a href="/gradebook/{{gClass.gcourseid}}/1">Download CSV</a>
 {% else %}
+    sort: 
+    {% if 'fname' in request.url %}
+        First Name | 
+        <a href="/gbvis/{{gClass.gcourseid}}/lname">Last Name</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/count">Count</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/ave">Ave</a>
+    {% elif 'lname' in request.url %}
+        <a href="/gbvis/{{gClass.gcourseid}}/fname">First Name</a> |
+        Last Name |
+        <a href="/gbvis/{{gClass.gcourseid}}/count">Count</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/ave">Ave</a>
+    {% elif 'count' in request.url %}
+        <a href="/gbvis/{{gClass.gcourseid}}/fname">First Name</a> | 
+        <a href="/gbvis/{{gClass.gcourseid}}/lname">Last Name</a> |
+        Count |
+        <a href="/gbvis/{{gClass.gcourseid}}/ave">Ave</a>
+    {% elif 'ave' in request.url %}
+        <a href="/gbvis/{{gClass.gcourseid}}/fname">First Name</a> | 
+        <a href="/gbvis/{{gClass.gcourseid}}/lname">Last Name</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/count">Count</a> |
+        Ave
+    {% else %}
+        <a href="/gbvis/{{gClass.gcourseid}}/fname">First Name</a> | 
+        <a href="/gbvis/{{gClass.gcourseid}}/lname">Last Name</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/count">Count</a> |
+        <a href="/gbvis/{{gClass.gcourseid}}/ave">Ave</a>
+    {% endif %}
+        <br>
     {{gbDFHTML}}
 {% endif %}
 
